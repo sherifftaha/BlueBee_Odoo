@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- منتج خدمي يمثل رسوم الحد الأدنى (6 قطع)
+         Service product representing the below-minimum (6 pieces) surcharge.
+         يُضاف تلقائياً كسطر على الـ SO عندما عدد القطع < 6 -->
+    <record id="product_below_min_fee" model="product.template">
+        <field name="name">رسوم أقل من الحد الأدنى — Below-minimum fee</field>
+        <field name="type">service</field>
+        <field name="list_price">0.0</field>
+        <field name="sale_ok" eval="False"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="description_sale">رسوم تُضاف تلقائياً عند الطلب بأقل من 6 قطع (25 جنيه/قطعة)
+Auto-applied when an order has fewer than 6 pieces (25 EGP per piece).</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Show is_blocked banner + field on partner form -->
+    <record id="view_partner_form_is_blocked" model="ir.ui.view">
+        <field name="name">res.partner.form.is.blocked</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Red banner at the top of the form when customer is blocked -->
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-danger d-flex align-items-center gap-2 mb-0"
+                     role="alert"
+                     invisible="not is_blocked">
+                    <i class="fa fa-ban fa-lg"/>
+                    <span>
+                        <strong>محظور — Blocked:</strong>
+                        هذا العميل محظور بسبب فواتير غير مدفوعة.
+                        This customer is blocked due to unpaid invoices.
+                    </span>
+                    <field name="is_blocked" invisible="1"/>
+                </div>
+            </xpath>
+
+            <!-- Toggle inside Sales &amp; Purchase tab → Sales group -->
+            <xpath expr="//page[@name='sales_purchases']//group[@name='sale']" position="inside">
+                <field name="is_blocked" widget="boolean_toggle" string="Blocked (Unpaid Invoices)"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

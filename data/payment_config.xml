@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Payment configuration parameters.
+             Edit values from: Settings → Technical → Parameters → System Parameters.
+             قابلة للتعديل من: الإعدادات → الفني → بارامترات النظام -->
+
+        <record id="param_vodafone_cash" model="ir.config_parameter">
+            <field name="key">invoice_deadline.vodafone_cash</field>
+            <field name="value">01001234567</field>
+        </record>
+
+        <record id="param_postal_account" model="ir.config_parameter">
+            <field name="key">invoice_deadline.postal_account</field>
+            <field name="value">حساب البريد رقم: 12345678</field>
+        </record>
+
+        <record id="param_whatsapp_phone" model="ir.config_parameter">
+            <field name="key">invoice_deadline.whatsapp_phone</field>
+            <field name="value">201001234567</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════
+         صفحة "حسابك محظور" — Blocked Account Page
+         ═══════════════════════════════════════════════════ -->
+    <template id="blocked_account_page" name="Blocked Account">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure">
+                <section class="s_text_block py-5" dir="rtl">
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="alert alert-danger text-end p-4 shadow-sm" role="alert">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <i class="fa fa-ban fa-3x flex-shrink-0"/>
+                                        <div class="flex-grow-1">
+                                            <h2 class="alert-heading mb-3">
+                                                حسابك محظور
+                                                <br/>
+                                                <small class="text-muted">Your account is blocked</small>
+                                            </h2>
+                                            <p class="mb-2">
+                                                لا يمكنك تصفح المتجر أو إجراء أي طلبات في الوقت الحالي بسبب وجود فواتير غير مدفوعة على حسابك.
+                                            </p>
+                                            <p class="mb-3 text-muted small">
+                                                You cannot browse the shop or place orders at this time because of unpaid invoices on your account.
+                                            </p>
+                                            <hr/>
+                                            <p class="mb-2">
+                                                <strong>للمتابعة:</strong>
+                                                يرجى التواصل مع الشركة لتسوية الفواتير المستحقة. بعد السداد سيتم رفع الحظر يدوياً من قبل أحد ممثلي الشركة.
+                                            </p>
+                                            <p class="mb-3 text-muted small">
+                                                <strong>To proceed:</strong>
+                                                please contact the company to settle outstanding invoices. After payment, an account manager will manually unblock your account.
+                                            </p>
+                                            <a href="/my/orders" class="btn btn-primary">
+                                                عرض فواتيري — View My Invoices
+                                            </a>
+                                            <a href="/contactus" class="btn btn-outline-secondary ms-2">
+                                                تواصل معنا — Contact Us
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════
+         Portal Home (/my): rename "Your Orders" tile to "My Invoices"
+         and hide the standard "Your Invoices" (account.move) tile.
+         صفحة /my: تغيير اسم "Your Orders" لـ "فواتيرى" + إخفاء "Your Invoices"
+         ═══════════════════════════════════════════════════ -->
+    <template id="portal_my_home_rename_orders"
+              inherit_id="sale.portal_my_home_sale"
+              name="Rename Orders Tile to Invoices">
+        <xpath expr="//div[@id='portal_client_category']//t[@t-set='title']" position="replace">
+            <t t-set="title">فواتيرى — My Invoices</t>
+        </xpath>
+        <xpath expr="//div[@id='portal_client_category']//t[@t-set='text']" position="replace">
+            <t t-set="text">متابعة، عرض، أو دفع فواتيرك — Follow, view or pay your invoices</t>
+        </xpath>
+    </template>
+
+    <!-- Hide Odoo's default "Your Invoices" tile (account.move portal entry) -->
+    <record id="account.portal_my_home_invoice" model="ir.ui.view">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         /my/orders page: rename title + column header + breadcrumb
+         to use "Invoice" instead of "Sales Order"
+         ═══════════════════════════════════════════════════ -->
+    <template id="portal_my_orders_rename_title"
+              inherit_id="sale.portal_my_orders"
+              name="Rename Orders page title and columns to Invoices">
+        <!-- Page title -->
+        <xpath expr="//t[@t-set='title']" position="replace">
+            <t t-set="title">فواتيرى — My Invoices</t>
+        </xpath>
+        <!-- Column 1: Invoice # -->
+        <xpath expr="//thead/tr/th[1]" position="replace">
+            <th class="text-center">
+                رقم الفاتورة
+                <br/>
+                <small class="text-muted" dir="ltr">Invoice #</small>
+            </th>
+        </xpath>
+        <!-- Column 2: Order Date -->
+        <xpath expr="//thead/tr/th[2]" position="replace">
+            <th class="text-center">
+                تاريخ الطلب
+                <br/>
+                <small class="text-muted" dir="ltr">Order Date</small>
+            </th>
+        </xpath>
+        <!-- Column 4: Total -->
+        <xpath expr="//thead/tr/th[4]" position="replace">
+            <th class="text-center">
+                الإجمالي
+                <br/>
+                <small class="text-muted" dir="ltr">Total</small>
+            </th>
+        </xpath>
+    </template>
+
+    <!-- Rename breadcrumb "Sales Orders" → "فواتيرى" -->
+    <template id="portal_breadcrumbs_rename"
+              inherit_id="sale.portal_my_home_menu_sale"
+              name="Rename Sales Orders breadcrumb">
+        <xpath expr="//a[contains(., 'Sales Orders')]" position="replace">
+            <a t-if="sale_order" t-attf-href="/my/orders?{{ keep_query() }}">فواتيرى — My Invoices</a>
+        </xpath>
+        <xpath expr="//t[@t-else='']" position="replace">
+            <t t-else="">فواتيرى — My Invoices</t>
+        </xpath>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════
+         Portal: My Orders — Invoice State badge + countdown
+         صفحة "فواتيري" في الـ portal
+         ═══════════════════════════════════════════════════ -->
+    <template id="portal_my_orders_invoice_state"
+              inherit_id="sale.portal_my_orders"
+              name="Portal Orders: Invoice State">
+
+        <!-- Add header columns at end of header row -->
+        <xpath expr="//thead/tr" position="inside">
+            <th class="text-center" dir="rtl">
+                حالة الفاتورة
+                <br/>
+                <small class="text-muted" dir="ltr">Invoice State</small>
+            </th>
+            <th class="text-center" dir="rtl">
+                الوقت المتبقي
+                <br/>
+                <small class="text-muted" dir="ltr">Time Remaining</small>
+            </th>
+            <th class="text-center" dir="rtl">
+                إجراء
+                <br/>
+                <small class="text-muted" dir="ltr">Action</small>
+            </th>
+        </xpath>
+
+        <!-- Add body cells at end of each foreach row -->
+        <xpath expr="//t[@t-foreach='orders']/tr" position="inside">
+            <td class="text-center" name="bb_invoice_state">
+                <t t-if="order.invoice_state == 'open'">
+                    <span class="badge rounded-pill text-bg-info">مفتوحة — Open</span>
+                </t>
+                <t t-elif="order.invoice_state == 'locked'">
+                    <span class="badge rounded-pill text-bg-warning">مقفولة — Locked</span>
+                </t>
+                <t t-elif="order.invoice_state == 'grace'">
+                    <span class="badge rounded-pill text-bg-warning">فترة سماح — Grace</span>
+                </t>
+                <t t-elif="order.invoice_state == 'blocked'">
+                    <span class="badge rounded-pill text-bg-danger">محظورة — Blocked</span>
+                </t>
+                <t t-elif="order.invoice_state == 'paid'">
+                    <span class="badge rounded-pill text-bg-success">مدفوعة — Paid</span>
+                </t>
+                <t t-else="">
+                    <span class="text-muted">—</span>
+                </t>
+            </td>
+            <td class="text-center" name="bb_countdown">
+                <t t-if="order.invoice_state == 'open' and order.invoice_deadline_date">
+                    <span class="bb_countdown" dir="ltr"
+                          t-att-data-deadline="order.invoice_deadline_date">...</span>
+                </t>
+                <t t-elif="order.invoice_state in ('locked', 'grace') and order.grace_end_date">
+                    <span class="bb_countdown text-danger fw-bold" dir="ltr"
+                          t-att-data-deadline="order.grace_end_date">...</span>
+                </t>
+                <t t-elif="order.invoice_state == 'paid'">
+                    <i class="fa fa-check text-success"/>
+                </t>
+                <t t-elif="order.invoice_state == 'blocked'">
+                    <span class="text-danger">انتهى — Expired</span>
+                </t>
+                <t t-else="">
+                    <span class="text-muted">—</span>
+                </t>
+            </td>
+            <td class="text-center" name="bb_action">
+                <t t-if="order.invoice_state == 'open'">
+                    <form method="POST"
+                          t-attf-action="/my/orders/#{order.id}/close_for_payment"
+                          class="d-inline">
+                        <input type="hidden" name="csrf_token"
+                               t-att-value="request.csrf_token()"/>
+                        <button type="submit"
+                                class="btn btn-sm btn-warning"
+                                onclick="return confirm('هل أنت متأكد من تقفيل هذه الفاتورة للدفع؟ لن تتمكن من إضافة منتجات أخرى عليها بعد ذلك.\n\nAre you sure you want to close this invoice for payment? You won't be able to add more items afterwards.');">
+                            <i class="fa fa-lock me-1"/>
+                            دفع وتقفيل
+                            <br/>
+                            <small dir="ltr">Pay &amp; Close</small>
+                        </button>
+                    </form>
+                </t>
+                <t t-elif="order.invoice_state in ('locked', 'grace', 'blocked')">
+                    <a t-attf-href="/my/orders/#{order.id}"
+                       class="btn btn-sm btn-success">
+                        <i class="fa fa-whatsapp me-1"/>
+                        إثبات الدفع
+                        <br/>
+                        <small dir="ltr">Send Proof</small>
+                    </a>
+                </t>
+                <t t-else="">
+                    <span class="text-muted">—</span>
+                </t>
+            </td>
+        </xpath>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════
+         Navbar: "My Invoices" button next to "My Cart"
+         زرار "فواتيري" في الـ navbar جنب "My Cart"
+         ═══════════════════════════════════════════════════ -->
+    <template id="header_invoices_link"
+              inherit_id="website_sale.header_cart_link"
+              name="Header My Invoices Link">
+        <xpath expr="//a[@href='/shop/cart']/.." position="after">
+            <li t-if="not request.env.user._is_public()"
+                t-attf-class="bb_my_invoices #{_item_class}">
+                <a href="/my/orders"
+                   t-attf-class="#{_link_class}"
+                   aria-label="My Invoices">
+                    <div t-attf-class="#{_icon_wrap_class}">
+                        <i t-if="_icon" class="fa fa-file-text-o fa-stack"/>
+                    </div>
+                    <span t-if="_text" t-attf-class="#{_text_class}">My Invoices</span>
+                </a>
+            </li>
+        </xpath>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════
+         Portal SO page: success banner + invoice status + Pay button
+         شريط نجاح + حالة الفاتورة + زرار الدفع على صفحة الـ SO
+         ═══════════════════════════════════════════════════ -->
+    <template id="portal_sale_order_pay_section"
+              inherit_id="sale.sale_order_portal_content"
+              name="Portal SO Content: invoice_state info + Pay button">
+
+        <xpath expr="//div[@id='introduction']" position="before">
+
+            <!-- Success banner after merge from cart -->
+            <t t-if="request.params.get('invoice_added')">
+                <div class="alert alert-success text-end shadow-sm mb-3" role="alert" dir="rtl">
+                    <i class="fa fa-check-circle me-2"/>
+                    <strong>تم إضافة المنتجات على فاتورتك بنجاح.</strong>
+                    <br/>
+                    <small class="text-muted" dir="ltr">Your products have been added to your invoice successfully.</small>
+                </div>
+            </t>
+
+            <!-- Below-minimum (6 pieces) surcharge warning -->
+            <t t-if="sale_order.invoice_state == 'open' and sale_order.is_below_minimum">
+                <div class="alert alert-warning shadow-sm mb-3" role="alert" dir="rtl">
+                    <div class="d-flex align-items-start gap-2 text-end">
+                        <i class="fa fa-exclamation-triangle fa-lg mt-1 flex-shrink-0"/>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading mb-2">
+                                فاتورتك أقل من الحد الأدنى
+                                <br/>
+                                <small class="text-muted" dir="ltr">Invoice below minimum</small>
+                            </h5>
+                            <p class="mb-1">
+                                الحد الأدنى للفاتورة
+                                <strong>6 قطع</strong>.
+                                فاتورتك الحالية
+                                <strong dir="ltr">
+                                    <t t-out="int(sale_order.total_pieces)"/>
+                                </strong>
+                                قطعة، لذلك تم إضافة رسوم
+                                <strong dir="ltr">25 جنيه/قطعة</strong>
+                                =
+                                <strong dir="ltr">
+                                    <t t-out="int(sale_order.minimum_fee_amount)"/>
+                                    ج.م
+                                </strong>.
+                            </p>
+                            <p class="mb-0 small text-muted" dir="ltr">
+                                Minimum invoice is <strong>6 pieces</strong>. Your invoice has
+                                <strong>
+                                    <t t-out="int(sale_order.total_pieces)"/>
+                                </strong>,
+                                so a <strong>25 EGP/piece</strong> surcharge
+                                (=<strong>
+                                    <t t-out="int(sale_order.minimum_fee_amount)"/> EGP</strong>)
+                                has been added.
+                            </p>
+                            <hr class="my-2"/>
+                            <p class="mb-0">
+                                💡
+                                <a href="/shop" class="alert-link">
+                                    أضف
+                                    <t t-out="int(6 - sale_order.total_pieces)"/>
+                                    قطع أخرى من المتجر
+                                </a>
+                                لتفادي الرسوم — الفاتورة لسه مفتوحة.
+                                <br/>
+                                <small class="text-muted" dir="ltr">
+                                    <a href="/shop" class="alert-link">Add
+                                    <t t-out="int(6 - sale_order.total_pieces)"/>
+                                    more pieces from the shop</a>
+                                    to remove the surcharge — the invoice is still open.
+                                </small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- Invoice deadline summary card -->
+            <t t-if="sale_order.invoice_state and sale_order.invoice_state != 'paid'">
+                <div class="card mb-3 shadow-sm" dir="rtl">
+                    <div class="card-body text-end">
+                        <h5 class="card-title mb-3">
+                            حالة الفاتورة
+                            <small class="text-muted" dir="ltr">— Invoice Status</small>
+                        </h5>
+
+                        <!-- State badge -->
+                        <div class="mb-2">
+                            <span class="text-muted small">الحالة الحالية — Current state:</span>
+                            <t t-if="sale_order.invoice_state == 'open'">
+                                <span class="badge rounded-pill text-bg-info ms-2">مفتوحة — Open</span>
+                            </t>
+                            <t t-elif="sale_order.invoice_state == 'locked'">
+                                <span class="badge rounded-pill text-bg-warning ms-2">مقفولة — Locked</span>
+                            </t>
+                            <t t-elif="sale_order.invoice_state == 'grace'">
+                                <span class="badge rounded-pill text-bg-warning ms-2">فترة سماح — Grace</span>
+                            </t>
+                            <t t-elif="sale_order.invoice_state == 'blocked'">
+                                <span class="badge rounded-pill text-bg-danger ms-2">محظورة — Blocked</span>
+                            </t>
+                        </div>
+
+                        <!-- Deadline date -->
+                        <t t-if="sale_order.invoice_state == 'open' and sale_order.invoice_deadline_date">
+                            <p class="mb-2">
+                                <span class="text-muted">آخر موعد للسداد — Pay before:</span>
+                                <strong dir="ltr" class="ms-2"
+                                        t-field="sale_order.invoice_deadline_date"
+                                        t-options='{"widget": "datetime"}'/>
+                            </p>
+                            <p class="mb-2">
+                                <span class="text-muted">الوقت المتبقي — Time remaining:</span>
+                                <strong class="bb_countdown ms-2" dir="ltr"
+                                        t-att-data-deadline="sale_order.invoice_deadline_date">...</strong>
+                            </p>
+                        </t>
+                        <t t-elif="sale_order.invoice_state in ('locked', 'grace') and sale_order.grace_end_date">
+                            <t t-set="overdue" t-value="sale_order._is_payment_overdue()"/>
+                            <t t-if="overdue">
+                                <p class="mb-2 text-danger">
+                                    <strong>تأخر السداد!</strong>
+                                    سيتم حظر الحساب في:
+                                    <strong dir="ltr" class="ms-2"
+                                            t-field="sale_order.grace_end_date"
+                                            t-options='{"widget": "datetime"}'/>
+                                </p>
+                                <p class="mb-2 text-danger">
+                                    <span>الوقت المتبقي قبل الحظر:</span>
+                                    <strong class="bb_countdown text-danger fw-bold ms-2" dir="ltr"
+                                            t-att-data-deadline="sale_order.grace_end_date">...</strong>
+                                </p>
+                            </t>
+                            <t t-else="">
+                                <p class="mb-2">
+                                    <span class="text-muted">آخر موعد للسداد — Pay before:</span>
+                                    <strong dir="ltr" class="ms-2"
+                                            t-field="sale_order.grace_end_date"
+                                            t-options='{"widget": "datetime"}'/>
+                                </p>
+                                <p class="mb-2">
+                                    <span class="text-muted">الوقت المتبقي للسداد — Time remaining:</span>
+                                    <strong class="bb_countdown ms-2" dir="ltr"
+                                            t-att-data-deadline="sale_order.grace_end_date">...</strong>
+                                </p>
+                            </t>
+                        </t>
+
+                        <!-- ▼ OPEN state: show "Pay & Close" CTA only.
+                             Payment methods/WhatsApp are hidden until customer locks. -->
+                        <t t-if="sale_order.invoice_state == 'open'">
+                            <hr class="my-3"/>
+                            <p class="small text-muted mb-3">
+                                لو خلصت إضافة المنتجات وعايز تدفع، اضغط الزرار. بعد كده مش هتقدر تضيف منتجات تانية على نفس الفاتورة.
+                                <br/>
+                                <span dir="ltr">If you're done adding items and want to pay, click the button. After that you won't be able to add more items to this invoice.</span>
+                            </p>
+                            <form method="POST"
+                                  t-attf-action="/my/orders/#{sale_order.id}/close_for_payment"
+                                  class="d-inline">
+                                <input type="hidden" name="csrf_token"
+                                       t-att-value="request.csrf_token()"/>
+                                <button type="submit"
+                                        class="btn btn-warning"
+                                        onclick="return confirm('هل أنت متأكد من تقفيل هذه الفاتورة للدفع؟ لن تتمكن من إضافة منتجات أخرى عليها بعد ذلك.\n\nAre you sure you want to close this invoice for payment? You won&apos;t be able to add more items afterwards.');">
+                                    <i class="fa fa-lock me-2"/>
+                                    دفع وتقفيل الفاتورة — Pay &amp; Close Invoice
+                                </button>
+                            </form>
+                        </t>
+
+                        <!-- ▼ LOCKED / GRACE / BLOCKED: show payment methods + WhatsApp -->
+                        <t t-if="sale_order.invoice_state in ('locked', 'grace', 'blocked')">
+                            <t t-set="pay_info" t-value="sale_order._get_payment_info()"/>
+                            <t t-set="wa_url" t-value="sale_order._get_whatsapp_payment_url()"/>
+                            <hr class="my-3"/>
+                            <h6 class="mb-2">
+                                💳 طرق الدفع
+                                <small class="text-muted" dir="ltr">— Payment Methods</small>
+                            </h6>
+                            <ul class="list-unstyled mb-3">
+                                <t t-if="pay_info.get('vodafone_cash')">
+                                    <li class="mb-1">
+                                        <i class="fa fa-mobile text-danger me-2"/>
+                                        <strong>فودافون كاش — Vodafone Cash:</strong>
+                                        <span dir="ltr" class="ms-2 user-select-all"
+                                              t-out="pay_info.get('vodafone_cash')"/>
+                                    </li>
+                                </t>
+                                <t t-if="pay_info.get('postal_account')">
+                                    <li class="mb-1">
+                                        <i class="fa fa-envelope text-primary me-2"/>
+                                        <strong>بريد مصر — Egypt Post:</strong>
+                                        <span class="ms-2 user-select-all"
+                                              t-out="pay_info.get('postal_account')"/>
+                                    </li>
+                                </t>
+                                <li class="mb-1">
+                                    <i class="fa fa-money text-success me-2"/>
+                                    <strong>المبلغ المطلوب — Amount due:</strong>
+                                    <span dir="ltr" class="ms-2 fw-bold"
+                                          t-field="sale_order.amount_total"
+                                          t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
+                                </li>
+                                <li class="mb-1">
+                                    <i class="fa fa-hashtag text-secondary me-2"/>
+                                    <strong>رقم الفاتورة — Invoice #:</strong>
+                                    <span dir="ltr" class="ms-2 user-select-all"
+                                          t-out="sale_order.name"/>
+                                </li>
+                            </ul>
+                            <p class="small text-muted mb-3">
+                                بعد التحويل، اضغط على الزرار التالي لإرسال إثبات الدفع على واتساب.
+                                <br/>
+                                <span dir="ltr">After the transfer, click the button below to send payment proof via WhatsApp.</span>
+                            </p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <t t-if="wa_url">
+                                    <a t-att-href="wa_url"
+                                       target="_blank"
+                                       class="btn btn-success">
+                                        <i class="fa fa-whatsapp me-2"/>
+                                        إرسال إثبات الدفع على واتساب — Send Proof via WhatsApp
+                                    </a>
+                                </t>
+                                <a href="/contactus" class="btn btn-outline-secondary">
+                                    <i class="fa fa-phone me-2"/>
+                                    تواصل معنا — Contact Us
+                                </a>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </t>
+
+        </xpath>
+    </template>
+
+</odoo>

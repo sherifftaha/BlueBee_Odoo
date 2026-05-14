@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ───── Form View: add "Invoice Deadline" tab ───── -->
+    <record id="view_order_form_invoice_deadline" model="ir.ui.view">
+        <field name="name">sale.order.form.invoice.deadline</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Tab after "Other Info" -->
+            <xpath expr="//page[@name='other_information']" position="after">
+                <page string="Invoice Deadline" name="invoice_deadline_tab">
+                    <group>
+                        <group string="Timeline">
+                            <field name="invoice_open_date"/>
+                            <field name="invoice_deadline_date"/>
+                            <field name="grace_end_date"/>
+                        </group>
+                        <group string="Status">
+                            <field name="invoice_state"
+                                   widget="badge"
+                                   decoration-success="invoice_state in ('open', 'paid')"
+                                   decoration-warning="invoice_state in ('locked', 'grace')"
+                                   decoration-danger="invoice_state == 'blocked'"/>
+                            <field name="merged_into_so_id"
+                                   invisible="not merged_into_so_id"/>
+                        </group>
+                    </group>
+                    <div class="mt-2"
+                         invisible="invoice_state not in ('open', 'locked', 'grace', 'blocked')">
+                        <button name="action_mark_paid"
+                                type="object"
+                                string="Mark as Paid — تسجيل كمدفوعة"
+                                class="btn btn-success"
+                                confirm="هل أنت متأكد من تسجيل الدفع لهذه الفاتورة؟ سيتم رفع الحظر عن العميل إذا لم تكن لديه فواتير محظورة أخرى. — Are you sure? The customer will be unblocked if no other blocked invoices remain."
+                                groups="sales_team.group_sale_manager"/>
+                    </div>
+                    <div class="mt-2"
+                         invisible="invoice_state != 'paid'">
+                        <button name="action_unmark_paid"
+                                type="object"
+                                string="Unmark Paid — إلغاء الدفع"
+                                class="btn btn-warning"
+                                confirm="سيتم إعادة الفاتورة لحالتها السابقة حسب التاريخ. — The invoice will be returned to its previous state based on the current date."
+                                groups="sales_team.group_sale_manager"/>
+                    </div>
+                </page>
+            </xpath>
+
+            <!-- Status bar: add invoice_state badge next to the order status bar -->
+            <xpath expr="//field[@name='state'][@widget='statusbar']" position="after">
+                <field name="invoice_state"
+                       widget="badge"
+                       decoration-success="invoice_state in ('open', 'paid')"
+                       decoration-warning="invoice_state in ('locked', 'grace')"
+                       decoration-danger="invoice_state == 'blocked'"
+                       invisible="not invoice_open_date"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ───── List View: add invoice_state column ───── -->
+    <record id="view_order_tree_invoice_deadline" model="ir.ui.view">
+        <field name="name">sale.order.tree.invoice.deadline</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="invoice_state"
+                       optional="show"
+                       widget="badge"
+                       decoration-success="invoice_state in ('open', 'paid')"
+                       decoration-warning="invoice_state in ('locked', 'grace')"
+                       decoration-danger="invoice_state == 'blocked'"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
