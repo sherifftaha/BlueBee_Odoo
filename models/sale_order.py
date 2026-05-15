@@ -46,6 +46,10 @@ class SaleOrder(models.Model):
         copy=False,
         help='This order was merged into the existing open order.',
     )
+    can_use_continuation = fields.Boolean(
+        string='Can Use Continuation',
+        compute='_compute_can_use_continuation',
+    )
 
     total_pieces = fields.Float(
         string='Total Pieces',
@@ -149,6 +153,75 @@ class SaleOrder(models.Model):
             else:
                 order.invoice_deadline_date = False
                 order.grace_end_date = False
+
+    @api.depends('invoice_state', 'partner_id', 'partner_id.has_used_continuation',
+                 'order_line.product_uom_qty')
+    def _compute_can_use_continuation(self):
+        for order in self:
+            if order.invoice_state != 'locked' or order.partner_id.has_used_continuation:
+                order.can_use_continuation = False
+                continue
+            partner_orders = self.search([
+                ('partner_id', '=', order.partner_id.id),
+                ('invoice_state', 'in', ('open', 'locked')),
+                ('state', 'in', ('sale', 'done')),
+            ])
+            fee_pid = self._get_fee_product_id()
+            total_qty = sum(
+                l.product_uom_qty
+                for so in partner_orders
+                for l in so.order_line
+                if l.product_id.id != fee_pid and l.product_uom_qty > 0
+            )
+            order.can_use_continuation = total_qty < 20
+
+    def action_continuation(self):
+        self.ensure_one()
+        partner = self.partner_id
+
+        if self.invoice_state != 'locked':
+            raise UserError("الاستكمال متاح فقط للفواتير المقفلة.")
+
+        if partner.has_used_continuation:
+            raise UserError("تم استخدام خيار الاستكمال مسبقاً لهذا الحساب. لا يمكن استخدامه مجدداً.")
+
+        partner_orders = self.search([
+            ('partner_id', '=', partner.id),
+            ('invoice_state', 'in', ('open', 'locked')),
+            ('state', 'in', ('sale', 'done')),
+        ])
+        fee_pid = self._get_fee_product_id()
+        total_qty = sum(
+            l.product_uom_qty
+            for so in partner_orders
+            for l in so.order_line
+            if l.product_id.id != fee_pid and l.product_uom_qty > 0
+        )
+        if total_qty >= 20:
+            raise UserError(
+                f"إجمالي الطلبات المفتوحة {int(total_qty)} قطعة. "
+                "الاستكمال متاح فقط لمن لديه أقل من 20 قطعة."
+            )
+
+        # Merge all other open/locked SOs into this one
+        other_orders = partner_orders - self
+        if other_orders:
+            for other in other_orders:
+                lines_to_move = other.order_line.filtered(
+                    lambda l: l.product_id.id != fee_pid
+                )
+                lines_to_move.with_context(skip_min_surcharge=True).write({'order_id': self.id})
+                other.write({'merged_into_so_id': self.id})
+            other_orders.action_cancel()
+            other_orders.unlink()
+
+        # Reset this SO back to open with a fresh countdown
+        self.write({
+            'invoice_open_date': fields.Datetime.now(),
+            'invoice_state': 'open',
+        })
+        partner.write({'has_used_continuation': True})
+        self._recompute_minimum_surcharge()
 
     def _cron_update_invoice_states(self):
         now = fields.Datetime.now()

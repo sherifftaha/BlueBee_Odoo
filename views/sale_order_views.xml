@@ -27,6 +27,13 @@
                                    invisible="not merged_into_so_id"/>
                         </group>
                     </group>
+                    <div class="mt-2" invisible="not can_use_continuation">
+                        <button name="action_continuation"
+                                type="object"
+                                string="استكمال الطلب — Continue Order"
+                                class="btn btn-primary"
+                                confirm="سيتم دمج جميع الطلبات المفتوحة في هذا الطلب وإعادة تفعيله من الصفر (عداد 10 أيام جديد). هذا الخيار متاح مرة واحدة فقط في عمر الحساب."/>
+                    </div>
                     <div class="mt-2"
                          invisible="invoice_state not in ('open', 'locked', 'grace', 'blocked')">
                         <button name="action_mark_paid"

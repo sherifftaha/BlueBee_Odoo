@@ -26,6 +26,7 @@
             <!-- Toggle inside Sales &amp; Purchase tab → Sales group -->
             <xpath expr="//page[@name='sales_purchases']//group[@name='sale']" position="inside">
                 <field name="is_blocked" widget="boolean_toggle" string="Blocked (Unpaid Invoices)"/>
+                <field name="has_used_continuation" widget="boolean_toggle" string="Used Continuation — استخدم الاستكمال"/>
             </xpath>
 
         </field>
