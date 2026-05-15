@@ -23,3 +23,7 @@ _build_pdf.py
 # OS
 .DS_Store
 Thumbs.db
+
+# Local planning docs
+DEMO_WALKTHROUGH.md
+LEARNING_PLAN.md
