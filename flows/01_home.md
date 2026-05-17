@@ -33,7 +33,7 @@ The home isn't just a product listing — it's **the merchant's first surface** 
 
 1. **تخليه يطلب بسرعة** — الهدف الأساسي للـ B2B
    Get him ordering fast — core B2B goal
-2. **توضّحله حالته المالية** بدون إزعاج
+2. **توضّح له حالته المالية** بدون إزعاج
    Surface his financial state without nagging
 3. **تديله إحساس بمكتب احترافي** مش موقع عام
    Give him a professional office feel — not a generic shop
@@ -72,6 +72,8 @@ This file **covers only the protected home** — the page an approved merchant s
 | 4 | التصنيف Taxonomy | **age-first** (5 أقسام رئيسية) | التاجر بيدوّر بالعمر مش بنوع المنتج |
 | 5 | Navbar في حالة Blocked | **navbar مبسّط** — اسم + logout بس | رسالة حادة: مفيش تسوّق، فيه دفع |
 | 6 | الوصول للأقسام Category access | **Mega Menu في الـ Navbar** + Home cards | التاجر اليومي مش لازم يرجع للهوم كل مرة |
+| 7 | اللغة Bilingual support | **عربي افتراضي + Language Switcher في الـ Navbar** (AR/EN) | الجمهور 95% مصري + مرونة للتجار اللي يفضّلوا الإنجليزي |
+| 8 | نبرة الكلام Tone of voice | **محايد جنسياً Gender-neutral** — "اطلب/تواصل" مش "اطلبي/تواصلي" | 2% رجالة جزء من الجمهور + neutral أفضل تجارياً للـ B2B |
 
 ---
 
@@ -131,7 +133,7 @@ flowchart TD
 
     RedirectLogin -.->|بعد Login بنجاح| CheckState
 
-    CheckState -->|Blocked| BlockScreen[🚫 شاشة بلوك كاملة<br/>Navbar مبسّط]
+    CheckState -->|Blocked| BlockScreen[🚫 شاشة بلوك كاملة<br/>Navbar مبسّط + Lang Switcher]
     CheckState -->|Normal/Open/Continuation| HomeNormal[🏠 Home + Full Navbar]
     CheckState -->|Grace 11-16 يوم| HomeGrace[🏠 Home + Banner برتقالي]
 
@@ -166,49 +168,51 @@ flowchart TD
 ### 1️⃣ Home — حالة Normal (Desktop)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ 🐝 BlueBee  |  المتجر ▾   العروض   فاتورتي  |  🔍   👤أحمد  🛒(3) │
-└─────────────────────────────────────────────────────────────┘
-│                                                             │
-│    ┌────────────────────────────────────────────┐           │
-│    │   Hero Carousel — تشكيلة جديدة             │           │
-│    │   [< ‖ ◉ ○ ○ > ]                          │           │
-│    └────────────────────────────────────────────┘           │
-│                                                             │
-│   تسوّقي حسب الفئة | Shop by Age                            │
-│   ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐         │
-│   │  👶   │ │  🧒   │ │  🧑   │ │  👩   │ │  👨   │         │
-│   │ رضع   │ │ أطفال │ │ مراهق │ │ سيدات │ │ رجال  │         │
-│   │ 0-24m │ │ 2-12y │ │ 12-18 │ │       │ │       │         │
-│   └───────┘ └───────┘ └───────┘ └───────┘ └───────┘         │
-│                                                             │
-│   🏷️ العروض الحالية | Active Promotions                     │
-│   ┌──────────────────┐ ┌──────────────────┐                 │
-│   │  Promo Banner 1  │ │  Promo Banner 2  │                 │
-│   └──────────────────┘ └──────────────────┘                 │
-│                                                             │
-│   ┌────────────────────────────────────────────┐           │
-│   │ Footer: سياسة + تواصل + قنوات تليجرام      │           │
-│   └────────────────────────────────────────────┘           │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ 🐝 BlueBee | المتجر ▾  العروض  فاتورتي | 🔍 [AR|EN] 👤أحمد 🛒(3)        │
+└──────────────────────────────────────────────────────────────────────┘
+│                                                                      │
+│    ┌────────────────────────────────────────────┐                   │
+│    │   Hero Carousel — تشكيلة جديدة             │                   │
+│    │   [< ‖ ◉ ○ ○ > ]                          │                   │
+│    └────────────────────────────────────────────┘                   │
+│                                                                      │
+│   تسوّق حسب الفئة | Shop by Age                                       │
+│   ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐                  │
+│   │  👶   │ │  🧒   │ │  🧑   │ │  👩   │ │  👨   │                  │
+│   │ رضع   │ │ أطفال │ │ مراهق │ │ سيدات │ │ رجال  │                  │
+│   │ 0-24m │ │ 2-12y │ │ 12-18 │ │       │ │       │                  │
+│   └───────┘ └───────┘ └───────┘ └───────┘ └───────┘                  │
+│                                                                      │
+│   🏷️ العروض الحالية | Active Promotions                              │
+│   ┌──────────────────┐ ┌──────────────────┐                          │
+│   │  Promo Banner 1  │ │  Promo Banner 2  │                          │
+│   └──────────────────┘ └──────────────────┘                          │
+│                                                                      │
+│   ┌────────────────────────────────────────────┐                    │
+│   │ Footer: سياسة + تواصل + قنوات تليجرام      │                    │
+│   └────────────────────────────────────────────┘                    │
+└──────────────────────────────────────────────────────────────────────┘
 ```
+
+> **ملاحظة عن `[AR|EN]`:** ده الـ Language Switcher — pill صغير قبل User dropdown. التفاصيل في قسم Navbar Specification.
 
 ---
 
 ### 2️⃣ Home — حالة Grace (يوم 11–16)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ ⚠️ فاتورة INV-042 محتاجة دفع — 3 أيام فاضلة     [ادفع الآن] │ ← Banner برتقالي
-│    Invoice INV-042 due — 3 days left            [Pay now]   │   ثابت غير قابل للإخفاء
-├─────────────────────────────────────────────────────────────┤
-│ 🐝 BlueBee  |  المتجر ▾   العروض   فاتورتي(1) |  🔍  👤أحمد  🛒(3) │
-└─────────────────────────────────────────────────────────────┘
-│                                                             │
-│              [نفس layout الـ Normal]                        │
-│              Standard layout (same as normal)               │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ ⚠️ فاتورة INV-042 محتاجة دفع — 3 أيام فاضلة            [ادفع الآن]   │ ← Banner برتقالي
+│    Invoice INV-042 due — 3 days left                   [Pay now]     │   ثابت غير قابل للإخفاء
+├──────────────────────────────────────────────────────────────────────┤
+│ 🐝 BlueBee | المتجر ▾  العروض  فاتورتي(1) | 🔍 [AR|EN] 👤أحمد 🛒(3)    │
+└──────────────────────────────────────────────────────────────────────┘
+│                                                                      │
+│              [نفس layout الـ Normal]                                  │
+│              Standard layout (same as normal)                        │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 **سلوك الـ Banner:**
@@ -228,37 +232,37 @@ flowchart TD
 ### 3️⃣ Home — حالة Blocked (يوم 17+)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ 🐝 BlueBee                              👤أحمد  ⚙️           │ ← Navbar مبسّط
-└─────────────────────────────────────────────────────────────┘   بدون 🛒 ولا روابط متجر
-│                                                             │
-│                                                             │
-│                          🚫                                 │
-│                                                             │
-│              حسابك متوقف مؤقتاً                              │
-│           Your account is suspended                         │
-│                                                             │
-│   فاتورة INV-042 غير مدفوعة منذ 17 يوم                      │
-│   Invoice INV-042 unpaid for 17 days                        │
-│                                                             │
-│   ┌─────────────────────────────────────┐                  │
-│   │  المطلوب لإعادة التفعيل:              │                  │
-│   │  Required to reactivate:             │                  │
-│   │                                      │                  │
-│   │  • قيمة الفاتورة:    4,500 ج          │                  │
-│   │  • غرامة التأخير:    1,000 ج          │                  │
-│   │  ───────────────────────              │                  │
-│   │  الإجمالي Total:     5,500 ج          │                  │
-│   └─────────────────────────────────────┘                  │
-│                                                             │
-│   ┌────────────────────────────────────┐                   │
-│   │ 📞  تواصلي مع خدمة العملاء          │                   │
-│   │     Contact customer service       │                   │
-│   └────────────────────────────────────┘                   │
-│                                                             │
-│   📞 01080811579   💬 واتساب WhatsApp                       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ 🐝 BlueBee                            [AR|EN]  👤أحمد  ⚙️              │ ← Navbar مبسّط + Lang Switcher
+└──────────────────────────────────────────────────────────────────────┘   بدون 🛒 ولا روابط متجر
+│                                                                      │
+│                                                                      │
+│                          🚫                                          │
+│                                                                      │
+│              حسابك متوقف مؤقتاً                                       │
+│           Your account is suspended                                  │
+│                                                                      │
+│   فاتورة INV-042 غير مدفوعة منذ 17 يوم                                │
+│   Invoice INV-042 unpaid for 17 days                                 │
+│                                                                      │
+│   ┌─────────────────────────────────────┐                           │
+│   │  المطلوب لإعادة التفعيل:              │                           │
+│   │  Required to reactivate:             │                           │
+│   │                                      │                           │
+│   │  • قيمة الفاتورة:    4,500 ج          │                           │
+│   │  • غرامة التأخير:    1,000 ج          │                           │
+│   │  ───────────────────────              │                           │
+│   │  الإجمالي Total:     5,500 ج          │                           │
+│   └─────────────────────────────────────┘                           │
+│                                                                      │
+│   ┌────────────────────────────────────┐                            │
+│   │ 📞  تواصل مع خدمة العملاء           │                            │
+│   │     Contact customer service       │                            │
+│   └────────────────────────────────────┘                            │
+│                                                                      │
+│   📞 01080811579   💬 واتساب WhatsApp                                 │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 **ملاحظات على شاشة البلوك:**
@@ -266,6 +270,7 @@ flowchart TD
 - مفيش بحث، مفيش سلة
 - اسم التاجر يبقى موجود (dropdown فيه logout بس)
 - الإعدادات متاحة (لو عايز يحدث contact info)
+- **الـ Language Switcher يفضل موجود** — التاجر ممكن يحتاج يقرا رسالة البلوك بالإنجليزي
 - الرسالة حادة وواضحة — تسوّق ممنوع، الدفع هو الحل
 
 ---
@@ -291,6 +296,10 @@ flowchart TD
 │ 👨 الرجال          ▸   │
 │ 🏷️ العروض              │
 │ ─────────────────       │
+│ 🌐 اللغة | Language     │
+│   ◉ عربية               │
+│   ○ English             │
+│ ─────────────────       │
 │ ⚙️ الإعدادات             │
 │ 🚪 تسجيل خروج           │
 └────────────────────────┘
@@ -304,9 +313,9 @@ flowchart TD
 ### Desktop Navbar (Normal/Grace state)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ [Logo] | [Mega Menu ▾] [Promos] [My Invoice] | [🔍] [User] [Cart] │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ [Logo] | [Mega Menu ▾] [Promos] [My Invoice] | [🔍] [AR|EN] [User] [Cart] │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 **Elements (RTL — من اليمين للشمال):**
@@ -315,12 +324,34 @@ flowchart TD
 3. **العروض** — يودي لصفحة العروض النشطة
 4. **فاتورتي** — يودي لصفحة الفواتير، يعرض badge لو في Grace/Blocked
 5. **🔍 البحث** — يفتح search overlay
-6. **👤 [اسم التاجر]** — dropdown:
+6. **🌐 Language Switcher [AR|EN]** — pill صغير لتبديل اللغة (تفاصيل تحت)
+7. **👤 [اسم التاجر]** — dropdown:
    - بياناتي My profile
    - فواتيري My invoices
    - طلباتي My orders
    - تسجيل خروج Logout
-7. **🛒 السلة (count)** — badge برقم المنتجات
+8. **🛒 السلة (count)** — badge برقم المنتجات
+
+### Language Switcher Specification
+
+**الوصف:** Compact pill design فيه AR و EN. اختيار اللغة بيغيّر الصفحة كاملة **بدون reload** وبيتحفظ في **cookie للـ session**.
+
+**Description:** Compact pill design with AR and EN. Language toggle switches the full page **without reload** and persists via **session cookie**.
+
+**Design Spec:**
+- **Active state:** Navy background (#012354) مع white text
+- **Inactive state:** Transparent background مع Navy text (#012354)
+- **Shape:** Compact pill, rounded
+- **Separator:** خط رفيع فاصل بين AR و EN
+- **Hover (Inactive):** Light navy tint للـ background
+- **Click behavior:** فوري instant — مفيش loading state ظاهر
+
+**شكل تقريبي Approximate visual:**
+```
+   ┌─────────────┐
+   │ [AR] │ EN   │   ← AR نشط (Navy bg + white text)، EN غير نشط
+   └─────────────┘
+```
 
 ### Mega Menu (يفتح بـ hover أو click على "المتجر")
 
@@ -343,14 +374,15 @@ flowchart TD
 ### Blocked State Navbar
 
 ```
-┌────────────────────────────────────────────┐
-│ [Logo]                  [User ▾] [Settings] │
-└────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│ [Logo]              [AR|EN] [User ▾] [Settings] │
+└─────────────────────────────────────────────────┘
 ```
 
 - مفيش Mega Menu
 - مفيش Search
 - مفيش Cart
+- **Language Switcher موجود** (التاجر ممكن يحتاج يقرا رسالة البلوك بالإنجليزي)
 - User dropdown يحتوي فقط على Logout
 
 ---
@@ -368,6 +400,11 @@ flowchart TD
 | 6 | Internet ضعيف | Categories grid أولوية في الـ load، Hero/Promotions lazy load |
 | 7 | تاجر يضغط على قسم وهو Blocked | يفترض ميقدرش لأن الـ navbar مبسّط، لكن لو فتح URL مباشر → redirect لشاشة البلوك |
 | 8 | في Grace state، التاجر يدفع الفاتورة | Banner يختفي فوراً، يرجع Normal state |
+| 9 | التاجر بيغير اللغة لـ EN وهو في صفحة منتج | الصفحة تتحول لإنجليزي **بدون ما يفقد مكانه** (نفس الـ product page) |
+| 10 | التاجر في Blocked state وعايز يقرا رسالة البلوك بالإنجليزي | الـ Language Switcher متاح في الـ navbar المبسّط |
+| 11 | اختيار اللغة بين الصفحات | بيتحفظ في **cookie** ومش بيرجع للعربي لما يـ navigate بين الصفحات |
+| 12 | اللغة تتغير → الـ direction يتغير | RTL لما اللغة عربية، LTR لما اللغة إنجليزية — تلقائي |
+| 13 | الخط يتبدل مع اللغة | Arabic: FF Malmoom — English: Bulgia. font swap تلقائي |
 
 ---
 
@@ -390,7 +427,8 @@ flowchart TD
 ابني design system لـ BlueBee:
 - اللي مرفق Brand Guideline + 7 sub-flows
 - ابدأ بـ tokens (colors, typography, spacing, shadows)
-- بعدها components (button, card, input, banner, badge, navbar, mega menu)
+- بعدها components (button, card, input, banner, badge, navbar,
+  mega menu, language switcher)
 - مخرج: design-system.tsx + Storybook-style preview
 ```
 
@@ -401,13 +439,28 @@ flowchart TD
 - React + Tailwind، responsive (desktop + mobile)
 - استخدم الـ Information Architecture الموجودة في الملف
 - اربط بين الـ mockups (clickable prototype)
+- اختبر الـ Language Switcher (AR ↔ EN) في الـ prototype
 ```
 
 ### ملاحظات حساسة لـ Claude Design:
-- **اللغة الأساسية:** عربي (RTL)، فيه إنجليزي ثانوي
-- **الجمهور:** سيدات تجار (98% من العملاء)، يفضّلون vibe دافي وأنثوي بدون ما يكون طفولي
+- **اللغة الأساسية:** عربي (RTL) — افتراضي. الـ Switcher يبدّل لإنجليزي (LTR) مباشرة
+- **Language Switcher إجباري في الـ Navbar** — متناسق مع تصميم BlueBee (Navy pill)، **مش الافتراضي بتاع Odoo**
+- **الـ Fonts:** Arabic بـ **FF Malmoom** — English بـ **Bulgia**. font swap تلقائي حسب اللغة
+- **الجمهور:** تجار من الجنسين (98% سيدات + 2% رجالة)، لكن النبرة **محايدة جنسياً** — مش موجهة للسيدات فقط
+- **كل النصوص بـ "اطلب/تواصل"** مش "اطلبي/تواصلي" — gender-neutral
 - **الفئة العمرية:** بالغين (مش أطفال) — الـ pattern الطفولي يبقى accent مش طاغي
 - **الـ navbar:** mega menu حساس — لازم يكون واضح ومايتلخبطش على الموبايل
+
+### Design Spec للـ Language Switcher:
+| Property | Value |
+|---|---|
+| Shape | Compact pill, rounded |
+| Active state | Navy background (#012354) + white text |
+| Inactive state | Transparent background + Navy text (#012354) |
+| Separator | خط رفيع فاصل بين AR و EN |
+| Hover (Inactive) | Light navy tint |
+| Transition | فوري instant — مفيش loading state |
+| Persistence | Cookie للـ session |
 
 ---
 
@@ -420,6 +473,11 @@ flowchart TD
 - [ ] Badge الفاتورة بيظهر في Grace + Blocked فقط
 - [ ] الـ Hero بيلودي في أقل من 2 ثانية على 3G
 - [ ] تاجر غير مسجل بيتحول لـ login مع return URL
+- [ ] **Language Switcher شغال في الـ Navbar في كل الحالات (Normal, Grace, Blocked)**
+- [ ] **اختيار اللغة بيتحفظ في cookie وثابت بين الصفحات**
+- [ ] **الـ RTL/LTR direction بيتغير تلقائياً مع اللغة**
+- [ ] **الـ Fonts بتتبدل: Arabic بـ FF Malmoom و English بـ Bulgia**
+- [ ] **كل اللغة محايدة جنسياً (مفيش "اطلبي/تواصلي")**
 
 ---
 
@@ -440,7 +498,8 @@ flowchart TD
 |---|---|---|
 | May 2026 | إنشاء أولي بعد جلسة قرارات | Claude Chat (Opus 4.7) |
 | May 2026 | إضافة Mega Menu، تعديل Blocked navbar، تصحيح placeholder الاسم | Based on Sherif's feedback |
-| May 2026 | **إخراج Landing لملف منفصل (00_landing_and_application.md)** | Based on Sherif's architectural feedback |
+| May 2026 | إخراج Landing لملف منفصل (00_landing_and_application.md) | Based on Sherif's architectural feedback |
+| May 2026 | **تحييد اللغة جنسياً + إضافة Language Switcher في الـ Navbar** | Based on Sherif's feedback (Sub-Flow #0 alignment) |
 
 ---
 
