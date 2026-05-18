@@ -48,14 +48,9 @@ docker compose exec odoo odoo shell -d odoo --db_host=db --db_user=odoo --db_pas
 - البيع للتجار فقط (B2B) — مش للأفراد
 - الموقع مقتصر على التجار المسجلين (invitation only)
 - البيع بالقطعة (مش سريهات مغلقة)
-- حد أدنى 6 قطع، أقل من 6 بزيادة 25 جنيه للقطعة
-
-### Loyalty System — نظام الولاء
-| Level | Discount | Threshold |
-|-------|----------|-----------|
-| برونزي Bronze | 5% | من أول قطعة |
-| فضي Silver | 10% | بعد 5,000 جنيه |
-| ذهبي Gold | 15% | بعد 15,000 جنيه |
+- حد أدنى 6 قطع للشحن، أقل من 6 بزيادة 25 جنيه للقطعة
+- الرسوم تتطبق **وقت الشحن الفعلي فقط** — مش وقت الاستكمال
+- نظام الولاء (Loyalty) **مؤجل لـ Phase 2** — محتاج بيانات حقيقية قبل التصميم
 
 ---
 
@@ -74,43 +69,63 @@ invoice_deadline/
 ├── __manifest__.py
 ├── __init__.py              ← imports: models, controllers
 ├── models/
-│   ├── __init__.py          ← imports: res_partner, sale_order, account_move
+│   ├── __init__.py          ← imports: res_partner, sale_order, account_move, website
 │   ├── res_partner.py       ← adds is_blocked field
-│   ├── sale_order.py        ← main logic + unified invoice + mark paid
-│   └── account_move.py      ← auto-detect payment → unblock
+│   ├── sale_order.py        ← main logic + unified invoice + payment workflow
+│   ├── account_move.py      ← auto-detect payment → mark paid
+│   └── website.py           ← renames "Add to Cart" → "Add to Invoice"
 ├── controllers/
 │   ├── __init__.py
-│   └── main.py              ← website_sale overrides (block + merge redirect)
+│   └── main.py              ← website_sale overrides (block + merge + close_for_payment)
 ├── views/
-│   ├── sale_order_views.xml ← form tab + status badge + list column
+│   ├── sale_order_views.xml  ← form tab + status badge + list column + admin buttons
 │   ├── res_partner_views.xml ← block banner + toggle
-│   └── templates.xml        ← website cart/checkout alerts + countdown
+│   └── templates.xml         ← portal pages + countdown + payment section
 ├── static/src/js/
-│   └── invoice_deadline.js  ← live countdown timer
+│   ├── invoice_deadline.js   ← live countdown timer
+│   └── cart_modal_patch.js   ← patches "Add to Cart" label in optional products modal
 └── data/
-    └── cron.xml             ← daily cron job
+    ├── cron.xml                    ← daily cron job
+    ├── payment_config.xml          ← Vodafone Cash / postal / WhatsApp system params
+    └── below_minimum_fee_product.xml ← service product for 25 EGP/piece surcharge
 ```
 
 ---
 
 ## 4. INVOICE/ORDER LIFECYCLE — دورة حياة الفاتورة
 
+### 4.1 الحالات الست — 6 Invoice States
+
+| الحالة State | المعنى | Trigger |
+|---|---|---|
+| `open` 🟦 | الفاتورة مفتوحة، التاجر يضيف بحرية، العداد شغال (10 أيام) | إنشاء الفاتورة أو دخول وضع الاستكمال |
+| `locked` 🟧 | مقفولة للإضافة، في انتظار دفع | (أ) Cron بعد 10 أيام، (ب) التاجر طلب دفع يدوياً |
+| `grace` 🟨 | يوم 11-16، التاجر يقدر يفتح فاتورة #2 بعداد منفصل | Cron: `locked` → `grace` يوم 11 |
+| `blocked` 🟥 | يوم 17، محظور تماماً، cascade على كل الفواتير | Cron: `locked`/`grace` → `blocked` يوم 17 |
+| `paid` ✅ | الدفع اتأكد، الفاتورة أُغلقت نهائياً وخرجت للشحن | الإدارة تأكد دفعة شحن |
+| `continuation` 🔁 | دفع جزئي اتأكد، الفاتورة مفتوحة للإضافة لحد 20 قطعة | الإدارة تأكد دفعة استكمال |
+
+> **ملحوظة:** `continuation` مش موجود في الكود بعد — مطلوب تنفيذه في Phase 2 من الـ GAP_ANALYSIS.md
+
+### 4.2 السيناريو الكامل — Full Lifecycle
+
 ```
-اليوم 0: العميل يعمل Confirm من الكارت
+اليوم 0: التاجر يعمل Confirm من الكارت
            → SO يتفتح
            → invoice_open_date = اليوم
            → invoice_state = 'open'
 
-اليوم 0-10: فترة مفتوحة
-           → العميل يقدر يضيف منتجات على نفس الـ SO
-           → لو عمل Confirm تاني → المنتجات تتضاف على SO الموجود (مش SO جديد)
+اليوم 0-10: فترة مفتوحة (open)
+           → التاجر يضيف منتجات على نفس الـ SO (Unified Invoice)
+           → لو Confirm تاني → المنتجات تتضاف على SO الموجود (مش SO جديد)
+           → التاجر يقدر يطلب دفع يدوياً → اختيار: شحن أو استكمال
 
 اليوم 11: الـ Cron يشتغل
-           → invoice_state: open → locked
+           → invoice_state: open → grace
            → تحذير يظهر للعميل
 
-اليوم 11-16: فترة السماح (Grace Period)
-           → العميل يقدر يفتح SO جديد (#2) بعداد منفصل
+اليوم 11-16: فترة السماح (grace)
+           → التاجر يقدر يفتح SO جديد (#2) بعداد منفصل
            → SO #1 لسه مقفول ينتظر الدفع
 
 اليوم 17: الـ Cron يشتغل
@@ -119,14 +134,100 @@ invoice_deadline/
            → partner.is_blocked = True
            → كل SOs التانية للعميل بتتبلك كمان (cascade)
 
-الدفع:
+الدفع (شحن):
            → invoice_state = 'paid'
-           → partner.is_blocked = False  ← (لسه مش متعمل - TODO)
+           → الفاتورة تخرج للشحن
+           → partner.is_blocked = False (لو كان بلوك)
+
+الدفع (استكمال):
+           → invoice_state = 'continuation'
+           → عداد جديد 10 أيام يبدأ من الأول
+           → الفاتورة تفضل مفتوحة للإضافة لحد 20 قطعة إجمالي
+           → عند وصول 20 قطعة → auto-lock + إشعار "الفاتورة هتتشحن"
+           → التاجر يقدر يحول continuation → shipping في أي وقت
+           → الشحن قرار نهائي (مش بيرجع استكمال)
+```
+
+### 4.3 سيناريو البلوك والفك — Block & Unblock
+
+```
+يوم 17 بدون دفع:
+   → كل فواتير التاجر → blocked
+   → partner.is_blocked = True
+   → التاجر يشوف رسالة الحظر في كل صفحة + زر واتس
+   → المطلوب للفك: الفاتورة الأصلية + غرامة 1000 جنيه
+   → الإدارة بتشيل الحظر يدوياً بعد تأكيد الدفع
+
+فك البلوك:
+   → SO #1 → paid
+   → SO #2 اللي اتبلك → تكمل من اليوم اللي وقفت فيه (مش من الأول)
+   → Technical: paused_at timestamp محتاج يتخزن وقت البلوك
 ```
 
 ---
 
-## 5. DATABASE FIELDS — الحقول في الداتابيز
+## 5. PAYMENT WORKFLOW — منطق الدفع اليدوي
+
+### 5.1 رحلة التاجر — Merchant Flow
+
+```
+1. التاجر يضغط "Pay & Close" من صفحة الفاتورة
+2. لو القطع < 6 → Confirmation Modal:
+      - تنبيه: رسوم +25ج/قطعة
+      - الإجمالي بالرسوم
+      - خياران: "أكمل التسوق" / "أكد الدفع بالرسوم"
+3. اختيار نوع الدفع:
+      - شحن: تأكيد العنوان + طريقة التواصل
+      - استكمال: بدون رسوم (الرسوم عند الشحن الفعلي)
+4. invoice_state → locked
+5. صفحة الدفع: حسابات البنك + فودافون كاش + بريد + زر "انسخ"
+6. التاجر يرفع screenshot التحويل + ملاحظة اختيارية  ← TODO
+7. الفاتورة تنتظر تأكيد الإدارة (has_pending_payment = True) ← TODO
+```
+
+### 5.2 تأكيد الإدارة — Admin Confirmation
+
+```
+تأكيد ✅:
+   → لو "شحن": invoice_state = 'paid' → الفاتورة تخرج للشحن
+   → لو "استكمال": invoice_state = 'continuation' → عداد جديد يبدأ
+
+رفض ❌:
+   → invoice_state يفضل 'locked'
+   → rejection_reason يتسجل على الـ SO  ← TODO
+   → إشعار للتاجر: دائم على صفحة الفاتورة + مؤقت أعلى الموقع  ← TODO
+   → التاجر يقدر يرفع screenshot جديد لنفس الفاتورة
+   → العداد يكمل في الخلفية — لو عدى يوم 16 → blocked
+```
+
+### 5.3 الرسوم — Surcharge Rules
+
+```
+الشحن:   لو القطع < 6 → رسوم 25ج × عدد القطع كـ line item في الفاتورة
+الاستكمال: بدون رسوم (الرسوم تُحسب فقط عند اختيار الشحن النهائي)
+
+مثال: تاجر دفع استكمال على 4 قطع، أضاف قطعة 5، قرر يشحن
+   → رسوم = 5 × 25 = 125 ج (مش 4 × 25)
+```
+
+---
+
+## 6. UNIFIED INVOICE — الفاتورة الموحدة
+
+لما التاجر يضيف منتج جديد، الـ logic يفحص الفواتير الموجودة بهذا الترتيب:
+
+| الأولوية | الشرط | الإجراء |
+|---|---|---|
+| 🥇 1 | فاتورة `continuation` مفتوحة للإضافة | اضف عليها (لو إجمالي القطع < 20) |
+| 🥈 2 | فاتورة `open` عادية | اضف عليها |
+| 🆕 3 | لا شيء من دول | فاتورة جديدة `open` بعداد 10 أيام |
+
+> ⚠️ لو الاتنين موجودين في نفس الوقت (`continuation` + `open`) → الأولوية للـ `continuation`.
+> ⚠️ الأولوية رقم 1 تحتاج تنفيذ Continuation mode أولاً (Phase 2 في GAP_ANALYSIS.md).
+
+---
+
+## 7. DATABASE FIELDS — الحقول في الداتابيز
 
 ### على sale.order
 | Field | Type | Description |
@@ -134,169 +235,113 @@ invoice_deadline/
 | `invoice_open_date` | Datetime | تاريخ فتح الفاتورة (يوم الـ Confirm) |
 | `invoice_deadline_date` | Datetime | تاريخ القفل (open_date + 10 أيام) — computed |
 | `grace_end_date` | Datetime | تاريخ البلوك (open_date + 16 يوم) — computed |
-| `invoice_state` | Selection | open / locked / grace / blocked / paid |
+| `invoice_state` | Selection | open / locked / grace / blocked / paid / continuation |
 | `merged_into_so_id` | Many2one(sale.order) | الـ SO الموحَّد عليه (لو الـ SO الجديد اتدمج في موجود) |
+| `total_pieces` | Float | عدد القطع الكلي (بدون line الرسوم) — computed |
+| `is_below_minimum` | Boolean | True لو القطع بين 1 و 5 — computed |
+| `minimum_fee_amount` | Float | الرسوم المحسوبة (قطع × 25) — computed |
+| `paused_at` | Datetime | وقت البلوك (لحساب الأيام المتبقية عند فك البلوك) — **TODO** |
+| `has_pending_payment` | Boolean | في دفعة في الانتظار (بعد رفع screenshot) — **TODO** |
+| `payment_type` | Selection | shipping / continuation (اختيار وقت الدفع) — **TODO** |
+| `rejection_reason` | Text | سبب رفض الدفع من الإدارة — **TODO** |
 
 ### على res.partner
 | Field | Type | Description |
 |-------|------|-------------|
 | `is_blocked` | Boolean | العميل محظور بسبب فواتير غير مدفوعة |
 
----
-
-## 6. CURRENT CODE — الكود الحالي
-
-> ملحوظة: الكود الحقيقي في الملفات. اللي هنا snapshot قديم — رجع للملفات نفسها للحقيقة الكاملة.
-
-### models/res_partner.py
-```python
-from odoo import fields, models
-
-class ResPartner(models.Model):
-    _inherit = 'res.partner'
-
-    is_blocked = fields.Boolean(
-        string='Blocked - Unpaid Invoices',
-        default=False,
-        copy=False,
-    )
-```
-
-### models/sale_order.py
-```python
-from odoo import api, fields, models
-from odoo.exceptions import UserError
-from datetime import timedelta
-
-class SaleOrder(models.Model):
-    _inherit = 'sale.order'
-
-    invoice_open_date = fields.Datetime(string='Invoice Open Date', readonly=True, copy=False)
-    invoice_deadline_date = fields.Datetime(string='Invoice Deadline Date', compute='_compute_invoice_dates', store=True)
-    grace_end_date = fields.Datetime(string='Grace End Date', compute='_compute_invoice_dates', store=True)
-    invoice_state = fields.Selection(
-        selection=[('open','Open'),('locked','Locked - Awaiting Payment'),
-                   ('grace','Grace Period'),('blocked','Blocked'),('paid','Paid')],
-        string='Invoice State', default='open', copy=False,
-    )
-
-    @api.depends('invoice_open_date')
-    def _compute_invoice_dates(self):
-        for order in self:
-            if order.invoice_open_date:
-                order.invoice_deadline_date = order.invoice_open_date + timedelta(days=10)
-                order.grace_end_date = order.invoice_open_date + timedelta(days=16)
-            else:
-                order.invoice_deadline_date = False
-                order.grace_end_date = False
-
-    def _cron_update_invoice_states(self):
-        # open → locked
-        open_orders = self.search([
-            ('invoice_state', '=', 'open'),
-            ('invoice_deadline_date', '!=', False),
-            ('invoice_deadline_date', '<=', fields.Datetime.now()),
-        ])
-        open_orders.write({'invoice_state': 'locked'})
-
-        # locked/grace → blocked (cascade)
-        escalate_orders = self.search([
-            ('invoice_state', 'in', ('locked', 'grace')),
-            ('grace_end_date', '!=', False),
-            ('grace_end_date', '<=', fields.Datetime.now()),
-        ])
-        if escalate_orders:
-            partners = escalate_orders.mapped('partner_id')
-            escalate_orders.write({'invoice_state': 'blocked'})
-            other_orders = self.search([
-                ('partner_id', 'in', partners.ids),
-                ('invoice_state', 'in', ('open', 'locked', 'grace')),
-            ])
-            other_orders.write({'invoice_state': 'blocked'})
-            partners.write({'is_blocked': True})
-
-    def action_confirm(self):
-        # Block if customer is blocked
-        for order in self:
-            if order.partner_id.is_blocked:
-                raise UserError(
-                    "Your account is blocked due to unpaid invoices. "
-                    "Please contact us to resolve."
-                )
-        res = super().action_confirm()
-        # Set invoice_open_date only if no active SO exists for this partner
-        for order in self:
-            if not order.invoice_open_date:
-                existing = self.search([
-                    ('partner_id', '=', order.partner_id.id),
-                    ('invoice_state', 'in', ('open', 'locked', 'grace')),
-                    ('id', '!=', order.id),
-                ], limit=1)
-                if not existing:
-                    order.invoice_open_date = fields.Datetime.now()
-        return res
-```
+> الحقول المعلَّمة **TODO** موجودة في المواصفات لكن لسه مش متعمَّلة في الكود.
 
 ---
 
-## 7. WHAT'S DONE ✅ — اللي اتعمل
+## 8. WHAT'S DONE ✅ — اللي اتعمل
 
 ```
 ✅ 1.  تعطيل auto_confirm module (Uninstalled)
 ✅ 2.  إنشاء invoice_deadline module
-✅ 3.  الحقول على sale.order (invoice_open_date, deadline, grace, state)
+✅ 3.  الحقول على sale.order (invoice_open_date, deadline, grace, state, total_pieces, fee)
 ✅ 4.  الحقل على res.partner (is_blocked)
 ✅ 5.  Cron Job يومي (open→locked→blocked + cascade)
 ✅ 6.  action_confirm يمنع البلوك
 ✅ 7.  تيست الـ Cron — شغال صح
 ✅ 8.  تيست منع الـ Confirm للعميل البلوك — شغال صح
-✅ 9.  Unified Invoice — الـ SO الجديد بيتدمج في الموجود تلقائياً
-✅ 10. Payment Closes Invoice — auto عبر account.move + manual button
+✅ 9.  Unified Invoice — الـ SO الجديد بيتدمج في الموجود تلقائياً (priority #2)
+✅ 10. Payment Closes Invoice — auto عبر account.move + manual button (Mark as Paid)
 ✅ 11. Backend UI — تاب على SO form + badge + عمود في list + banner partner
 ✅ 12. Website UI — alerts + countdown + block checkout للمحظور
+✅ 13. Below-minimum surcharge — 25 EGP/piece كـ line item تلقائي
+✅ 14. Customer-initiated lock — زر "Pay & Close" على portal
+✅ 15. Payment info display — فودافون كاش + بريد + واتس على portal
+✅ 16. Cascade unblock — action_mark_paid بتفك بلوك الـ siblings اللي في grace
 ```
 
 ---
 
-## 8. WHAT'S REMAINING ⏳ — اللي لسه هنعمله
+## 9. WHAT'S REMAINING ⏳ — اللي لسه هنعمله
 
-### TODO: Remaining fixes + testing
+مرتَّب حسب خطة التنفيذ في `GAP_ANALYSIS.md`:
+
 ```
-✅ Red banner on blocked partner form
-✅ Blocked toggle in Sales & Purchase tab
-✅ Invoice Deadline tab on SO form (Timeline + Status + Mark as Paid)
-✅ Invoice State badge in list view
-✅ Mark as Paid button — changes state to paid, unblocks partner
-✅ Unified Invoice — merge lines into existing SO, delete new SO, redirect to existing SO
-✅ Website cart alert — shows info/warning/danger based on invoice_state
-⏳ Website countdown timer — data-deadline arrives correctly ('2026-05-06 15:46:13')
-   but JS not executing. Root cause: Odoo 17 loads assets_frontend bundle before DOM
-   is ready, so DOMContentLoaded may not fire. Fix: convert JS to Odoo module format
-   or use owl Component instead of plain DOMContentLoaded listener.
-⏳ Payment auto-detection via account.move (needs testing with Create Invoice flow)
-⏳ Website checkout block for blocked customers (needs blocked user test on website)
-⏳ Clean up S00048 Cancelled record from old test
+── Phase 1: Bug Fixes ──────────────────────────────────────────
+⏳ JS Countdown — تحويل لـ Odoo module format (DOMContentLoaded issue)
+⏳ action_confirm search condition — تصحيح لـ 'open' بس مش ('open','locked','grace')
+⏳ paused_at field — إضافة + pause/resume logic بعد فك البلوك
+
+── Phase 2: Grace State ─────────────────────────────────────────
+⏳ Cron: إضافة locked → grace transition (يوم 11)
+   [يحتاج قرار: هل grace يبدأ مع locked ولا بعده؟]
+
+── Phase 3: 1000 EGP Penalty ───────────────────────────────────
+⏳ product_penalty_1000 — إنشاء service product للغرامة
+⏳ Cron: إضافة غرامة 1000ج تلقائياً على SO المبلوك
+⏳ action_mark_paid — التحقق من دفع الغرامة قبل فك الحظر
+⏳ Backend UI: إظهار total + غرامة على form الإدارة
+
+── Phase 4: Payment Proof + Admin Workflow ─────────────────────
+⏳ has_pending_payment flag على SO
+⏳ Screenshot upload في portal (Odoo attachment)
+⏳ خانة ملاحظة التاجر الاختيارية
+⏳ Backend: قائمة "فواتير تنتظر التأكيد" (list filter)
+⏳ زر "تأكيد الدفع" + زر "رفض الدفع" (بخانة سبب) في backend
+⏳ rejection_reason field على SO
+⏳ عرض سبب الرفض على portal page للتاجر (دائم)
+⏳ In-app notification مؤقت عند الرفض
+
+── Phase 5: Confirmation Modal ──────────────────────────────────
+⏳ Modal HTML عند "Pay & Close" لو قطع < 6 (يعرض الرسوم + خيارين)
+
+── Phase 6: Continuation Mode ───────────────────────────────────
+⏳ payment_type field (shipping / continuation)
+⏳ UI اختيار الشحن أو الاستكمال في صفحة الدفع
+⏳ continuation state logic (عداد جديد، open للإضافة)
+⏳ Max 20 pieces: auto-lock + notification
+⏳ تحويل continuation → shipping (بدون العكس)
+⏳ تعديل surcharge timing: تظهر فقط عند shipping
+⏳ Unified Invoice Priority #1 (continuation أولوية)
+⏳ رسالة "تواصل مع خدمة العملاء" لإلغاء فاتورة الاستكمال
 ```
 
 ---
 
-## 9. OPEN QUESTIONS — أسئلة مفتوحة
+## 10. OPEN QUESTIONS — أسئلة مفتوحة
 
 ```
-❓ لما البلوك يتفك بعد دفع SO #1:
-   SO #2 اللي اتبلك قبل ما يخلص الـ 16 يوم بتاعته:
-   → تكمل من اليوم اللي وقفت فيه؟
-   → تبدأ من الصفر؟
-   → تتلغي؟
-   ← لازم نسأل صاحب العمل
+❓ Grace State Trigger:
+   متى بالضبط تتحول الفاتورة لـ grace؟
+   → الخيار أ: Cron يوم 11 يحوّل مباشرة open → grace (بدل locked)
+   → الخيار ب: open → locked (manual أو cron)، ثم locked → grace في يوم لاحق
+   → الخيار ج: locked و grace هما نفس الحالة من وجهتين مختلفتين
+   ← محتاج توضيح من نانسي
 
-❓ الـ unified invoice دلوقتي بيدمج فقط لو الـ SO الموجود في state ('sale','done').
-   لو العميل عنده quotation (draft) — هل نضمها كمان؟
+❓ Continuation counter:
+   العداد الجديد (10 أيام) عند دخول continuation — هل صح منطقياً؟
+   يعني الفاتورة ممكن تكون مفتوحة إجمالاً ~20 يوم.
+   ← قرار مؤقت موثق في BUSINESS_LOGIC.md — محتاج تأكيد من نانسي
 ```
 
 ---
 
-## 10. IMPORTANT NOTES — ملاحظات مهمة
+## 11. IMPORTANT NOTES — ملاحظات مهمة
 
 ```
 1. الـ computed fields (invoice_deadline_date, grace_end_date) مش بتتحسب
@@ -313,11 +358,17 @@ class SaleOrder(models.Model):
    b. Upgrade module من Apps أو عبر command line
 
 5. الـ module اتعمله Missing license warning — عادي، مش error.
+
+6. الـ continuation state مش موجود في selection field بعد.
+   لما تضيفه: لازم migration script عشان records القديمة.
+
+7. الـ surcharge (below_minimum_fee) دلوقتي بتتحسب لايف على أي open SO.
+   بعد تنفيذ Continuation: الرسوم تتصفر تلقائياً لو payment_type = 'continuation'.
 ```
 
 ---
 
-## 11. WORKFLOW FOR CLAUDE CODE — طريقة الشغل
+## 12. WORKFLOW FOR CLAUDE CODE — طريقة الشغل
 
 لما تعمل أي تغيير:
 
@@ -337,6 +388,16 @@ docker compose logs odoo --tail=30
 
 ---
 
-*Last updated: 2026-04-26 — added Unified Invoice, Payment auto-close, Backend UI, Website UI*
+## 13. RELATED DOCUMENTS — الملفات المرجعية
+
+| الملف | الغرض |
+|---|---|
+| `BUSINESS_LOGIC.md` | المرجع الرسمي لكل قرارات العمل — **أي تعارض، BL يكسب** |
+| `GAP_ANALYSIS.md` | تحليل الفجوات + خطة التنفيذ بالـ phases |
+| `README.md` | نظرة عامة للمطورين الجدد |
+
+---
+
+*Last updated: 2026-05-16 — updated lifecycle (6 states), payment workflow, unified invoice priority, removed Loyalty (Phase 2), added TODO fields*
 *Developer: Sherif Taha*
 *Project: BlueBee-Eg Odoo B2B E-commerce*
