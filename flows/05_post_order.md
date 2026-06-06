@@ -5,8 +5,8 @@
 > **Phase:** 1 — UX Planning
 > **Status:** 🟡 Draft — في انتظار مراجعة شريف
 > **Date:** June 2026
-> **Scope:** يغطي كل ما يخص الفاتورة بعد ما اتولدت — من لوحة الفواتير (بكل حالاتها)، لصفحة الفاتورة المفردة (تفاصيل + أكشن + سبب الرفض + العداد)، لحالة الشحن البسيطة بعد الدفع، لقسم المرتجع (الديفوهات). بيشمل عرض حالات Open / Locked / Grace / Continuation / Blocked / Paid من جهة التاجر.
-> **Scope note:** Covers everything about the invoice after it's created — from the invoices dashboard (all states), to the single invoice page (details + actions + rejection reason + counter), to the simple post-payment shipment status, to the returns (defects) section. Includes the display of Open / Locked / Grace / Continuation / Blocked / Paid states from the merchant's side.
+> **Scope:** يغطي كل ما يخص الفاتورة بعد ما اتولدت — من لوحة الفواتير (بكل حالاتها)، لصفحة الفاتورة المفردة (تفاصيل + أكشن + سبب الرفض + العداد)، لحالة الشحن البسيطة بعد الدفع، لقسم المرتجع (الديفوهات). بيشمل عرض حالات Open / Locked / Grace / Blocked / Paid + الاستكمال (flag على open) من جهة التاجر.
+> **Scope note:** Covers everything about the invoice after it's created — from the invoices dashboard (all states), to the single invoice page (details + actions + rejection reason + counter), to the simple post-payment shipment status, to the returns (defects) section. Includes the display of Open / Locked / Grace / Blocked / Paid states + continuation (a flag on open) from the merchant's side.
 
 ---
 
@@ -85,7 +85,7 @@ This Sub-Flow starts from **an existing invoice (any state)** and covers all mer
 
 | # | القرار Decision | الاختيار Choice | السبب Rationale |
 |---|---|---|---|
-| 1 | لوحة الفواتير Invoices dashboard | **قائمة موحّدة لكل الفواتير، مفلترة بالحالة** (الكل / مفتوحة / محتاجة دفع / مدفوعة) | التاجر يلاقي كل حاجة في مكان واحد، الفلتر يساعده يركّز |
+| 1 | لوحة الفواتير Invoices dashboard | **قائمة موحّدة لكل الفواتير، مفلترة بالحالة** (الكل / طلباتي النشطة / محتاجة دفع / فواتيري المنتهية) — الـ default = طلباتي النشطة | التاجر يلاقي كل حاجة في مكان واحد، الفلتر يساعده يركّز |
 | 2 | ترتيب الفواتير Sort order | **الأحدث والأكثر إلحاحاً فوق** — الفواتير اللي محتاجة أكشن (Locked/Grace) في القمة | الإلحاح أهم من التاريخ — التاجر لازم يشوف اللي بيقرب يبلوك أولاً |
 | 3 | حالة الشحن Shipment status | **بسيطة: بيتجهز / اتشحن فقط** — بدون رقم تتبع ولا شركة شحن | الشركة بتشحن يدوي (مندوب + بريد)، مفيش tracking number حقيقي |
 | 4 | المرتجع Returns | **عرض السياسة + زر تواصل واتس** — بدون فورم رفع صور | السياسة بتتطلب فحص بشري للصور خلال 24 ساعة، الفورم يرجع لخدمة العملاء في الآخر |
@@ -114,10 +114,9 @@ This is the most important concept. The merchant **doesn't see technical state n
 | `locked` | 🟧 محتاجة دفع | برتقالي | اطلب دفع / استبدل الإيصال |
 | `locked` + دفعة معلقة | 🕐 تحت المراجعة | برتقالي فاتح | استبدل الإيصال / انتظر |
 | `grace` | ⏳ بتقرب تتقفل — ادفع بسرعة | أصفر | اطلب دفع (إلحاح) |
-| `continuation` | 🔁 مفتوحة للاستكمال | أزرق فاتح | أضف قطع (لحد 20) / حوّل لشحن |
+| `open` + `is_continuation` | 🔁 مفتوحة للاستكمال | أزرق فاتح | أضف قطع (لحد 20) / حوّل لشحن |
 | `blocked` | 🚫 موقوفة | أحمر | تواصل مع الإدارة بس |
 | `paid` (شحن) | ✅ مدفوعة — بتتجهز/اتشحنت | أخضر | تابع الشحن |
-| `paid` (استكمال) | ✅ مدفوعة — رجعت مفتوحة | أخضر | أضف قطع / حوّل لشحن |
 
 > ⚠️ **قاعدة لغوية مهمة:** الـ wireframes و الـ UI **لازم** تستخدم العمود التاني (لغة التاجر). أسماء الحالات التقنية للكود بس. ده متوافق مع قاعدة "لغة التاجر مش لغة المطوّر" في BUSINESS_LOGIC.
 >
@@ -129,10 +128,11 @@ This is the most important concept. The merchant **doesn't see technical state n
 ## 🌐 URL Structure
 
 ```
-/my/invoices                  → لوحة الفواتير Invoices dashboard
+/my/invoices                  → لوحة الفواتير الموحّدة Unified dashboard (الكل All)
+/my/invoices?state=active     → طلباتي: النشطة (open/locked/grace/blocked + استكمال)
 /my/invoices?state=open       → مفلتر: المفتوحة Filtered: open
 /my/invoices?state=payment    → مفلتر: محتاجة دفع (locked + grace)
-/my/invoices?state=paid       → مفلتر: المدفوعة
+/my/invoices?state=paid       → فواتيري: المنتهية (paid، مش استكمال)
 /my/invoices/1042             → صفحة الفاتورة المفردة Single invoice #1042
 /my/returns                   → سياسة المرتجع (الديفوهات)
 ```
@@ -532,7 +532,7 @@ flowchart TD
 | الحالة State | العداد Counter | العرض Display |
 |---|---|---|
 | `open` | 10 أيام من الإنشاء | "باقي N أيام" + شريط تقدّم أزرق |
-| `continuation` | 10 أيام جديدة من دخول الاستكمال | "باقي N أيام (عداد جديد)" + شريط أزرق فاتح |
+| `open` + `is_continuation` | 10 أيام جديدة من دخول الاستكمال | "باقي N أيام (عداد جديد)" + شريط أزرق فاتح |
 | `grace` | أيام 11-16 | "باقي N يوم قبل الإيقاف" + شريط أحمر + تحذير الغرامة |
 | `locked` / `paid` / `blocked` | مفيش عداد ظاهر | الحالة بس |
 
@@ -600,7 +600,7 @@ flowchart TD
 | فاتورة فيها قطعة اتشالت من الكتالوج | تفضل ظاهرة في الفاتورة بالاسم والسعر المحجوز (الفاتورة snapshot) |
 | التاجر يفتح فاتورة وهو blocked | شاشة الحظر Full-page (مش صفحة الفاتورة) |
 | رفض الدفع + العداد قرب يخلص | سبب الرفض + تحذير المهلة المتبقية (من Sub-Flow #4) |
-| فاتورة Paid استكمال + وصلت 20 قطعة | الحالة تتحوّل لإقفال تلقائي + إشعار "وصلت للحد الأقصى" (من BUSINESS_LOGIC قسم 3) |
+| فاتورة استكمال (`open` + `is_continuation`) + وصلت 20 قطعة | الحالة تتحوّل لإقفال تلقائي + إشعار "وصلت للحد الأقصى" (من BUSINESS_LOGIC قسم 3) |
 | صورة منتج مش موجودة | placeholder بشعار BlueBee |
 
 ---
@@ -623,7 +623,7 @@ flowchart TD
 **الشاشات المطلوب تصميمها | Screens to design:**
 
 1. لوحة الفواتير (Desktop + Mobile) — مع الفلاتر والكروت
-2. صفحة الفاتورة المفردة — 6 حالات: Open / Locked / Grace / Continuation / Paid / Blocked
+2. صفحة الفاتورة المفردة — 5 حالات + flag الاستكمال: Open / Locked / Grace / Paid / Blocked (+ `is_continuation` على open)
 3. مكوّن حالة الشحن (3 مراحل بسيطة)
 4. مكوّن العداد (نص + شريط تقدّم بألوان حسب الحالة)
 5. صفحة سياسة المرتجع + زر واتس
@@ -672,7 +672,7 @@ flowchart TD
 - [ ] التاجر يشوف كل فواتيره في `/my/invoices` مع الحالة الصحيحة لكل واحدة
 - [ ] الفواتير المحتاجة أكشن (Locked/Grace) تظهر فوق
 - [ ] الفلترة بالحالة شغّالة وبتعكس في الـ URL
-- [ ] صفحة الفاتورة بتعرض الأكشن الصح حسب الحالة (6 حالات)
+- [ ] صفحة الفاتورة بتعرض الأكشن الصح حسب الحالة (5 حالات + flag الاستكمال)
 - [ ] العداد ظاهر وصحيح للفواتير المفتوحة (Open/Continuation/Grace)
 - [ ] شريط العداد بيغيّر لونه حسب الإلحاح
 - [ ] "اطلب دفع" بيدخل على Sub-Flow #4 صح
