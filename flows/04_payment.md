@@ -174,14 +174,14 @@ There are two ways the merchant reaches the payment screen:
 ## 🌐 URL Structure
 
 ```
-/shop/invoice/<id>                 → صفحة الفاتورة (من Sub-Flow #5، نقطة الدخول هنا)
-/shop/invoice/<id>/pay             → شاشة اختيار المسار + الدفع
-/shop/invoice/<id>/pay/shipping    → مسار الشحن (تأكيد العنوان + الدفع)
-/shop/invoice/<id>/pay/continue    → مسار الاستكمال (الدفع المباشر)
-/shop/invoice/<id>/pay/review      → شاشة "تحت المراجعة"
+/my/invoices/<id>                  → صفحة الفاتورة (من Sub-Flow #5، نقطة الدخول هنا)
+/my/invoices/<id>/pay              → شاشة اختيار المسار + الدفع
+/my/invoices/<id>/pay/shipping     → مسار الشحن (تأكيد العنوان + الدفع)
+/my/invoices/<id>/pay/continue     → مسار الاستكمال (الدفع المباشر)
+/my/invoices/<id>/pay/review       → شاشة "تحت المراجعة"
 ```
 
-> الـ upload action بيـ POST لـ controller endpoint (مثلاً `/shop/invoice/<id>/pay/submit`) بيرفع الإيصال + يحط flag الدفعة المعلقة.
+> الـ upload action بيـ POST لـ controller endpoint (مثلاً `/my/invoices/<id>/pay/submit`) بيرفع الإيصال + يحط flag الدفعة المعلقة.
 >
 > رفع الإيصال بيدعم استبدال — POST تاني على نفس الـ endpoint بيستبدل الصورة طول ما الدفعة معلقة.
 
